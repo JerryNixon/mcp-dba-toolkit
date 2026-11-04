@@ -58,6 +58,8 @@ transaction is another real-world situation the diagnostic tools can reveal.
 [One PowerShell command](solution/run.ps1) starts SQL Server, deploys the schema, and then
 starts Data API builder using [Docker Compose](solution/compose.yaml). Only two containers
 are needed, and the command verifies the blocking flow.
+It asks for the SQL `sa` password with hidden input, so there is no environment
+file to configure.
 Open the demo in VS Code and start the `dba` connection from
 [the workspace MCP configuration](.vscode/mcp.json). Ask Copilot in Agent mode
 why SQL is slow, and let it follow the evidence through the five tools.

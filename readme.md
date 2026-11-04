@@ -31,19 +31,18 @@ ports 1234 (SQL) and 5678 (DAB). No host SQL Server, sqlcmd,
 DAB, or Node.js installation is required. Use VS Code with GitHub Copilot
 to talk to the demo through MCP.
 
-Create a gitignored `.env` in this directory with your local demo password:
-
-```dotenv
-MSSQL_SA_PASSWORD=<your local demo password>
-```
-
-Then run from the repository root:
+Run from the repository root:
 
 ```powershell
 .\solution\run.ps1
 ```
 
-[run.ps1](solution/run.ps1) uses [compose.yaml](solution/compose.yaml) and the password from the root `.env`,
+[run.ps1](solution/run.ps1) prompts for the SQL `sa` password with hidden input.
+For a new database, choose a strong password that meets SQL Server's password
+policy. When reusing demo data, enter the existing password.
+No environment file or password argument is needed.
+
+The script uses [compose.yaml](solution/compose.yaml),
 starts SQL Server 2025, deploys [database.sql](solution/database.sql) into `McpDbaDemo`
 using SQL Server's bundled sqlcmd,
 and starts DAB 2.1.5 under the **agentic-dba** Compose group.
@@ -53,9 +52,9 @@ The network and SQL data volume also use the `agentic-dba-` prefix.
 SQL and DAB readiness checks gate startup. Use [run.ps1](solution/run.ps1), not
 `docker compose up`, for initial startup and schema updates.
 The script resolves its files independently of the terminal's working directory;
-from `solution`, use `.\run.ps1`. Keep `.env` at the repository root.
+from `solution`, use `.\run.ps1`.
 Rerunning the command reuses the SQL data volume. Keep the same password while
-reusing that volume; changing `.env` alone does not change an existing SQL login.
+reusing that volume; entering a different password does not change an existing SQL login.
 
 The same command verifies the five tools,
 diagnoses a real blocker and waiter, checks confirmation and stale-session
@@ -121,6 +120,8 @@ port 5678 is the MCP connection for VS Code. All five tools share
 anonymous execute access and use a demo SQL administrator. Confirmation is an
 intent check, not an authorization boundary. Do not expose this package publicly
 or use its credentials as a production access pattern.
+The password is not saved in workspace files; Docker stores it in the containers'
+environment, which users with Docker access can inspect.
 
 ## Sources
 

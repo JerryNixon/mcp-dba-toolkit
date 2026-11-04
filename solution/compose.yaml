@@ -8,7 +8,7 @@ services:
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_PID: Developer
-      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Run run.ps1 to enter the SQL sa password}
     ports:
       - "127.0.0.1:1234:1433"
     volumes:
@@ -27,7 +27,7 @@ services:
     labels:
       agentic-dba: demo
     environment:
-      SQL_CONN_STRING: "Server=sql;Database=McpDbaDemo;User Id=sa;Password=${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env};Encrypt=True;TrustServerCertificate=True;Application Name=McpDbaDemo;Command Timeout=150"
+      SQL_CONN_STRING: ${SQL_CONN_STRING:?Run run.ps1 to configure the SQL connection}
     ports:
       - "127.0.0.1:5678:5000"
     volumes:

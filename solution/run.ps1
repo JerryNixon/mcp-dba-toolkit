@@ -25,16 +25,28 @@ function Invoke-Sql([string] $Query, [string] $Database = 'McpDbaDemo') {
 
 $sql = Get-DemoContainer $sqlName
 $dab = Get-DemoContainer $dabName
-$composeArguments = @('compose', '--project-directory', $PSScriptRoot, '--env-file', (Join-Path (Split-Path $PSScriptRoot -Parent) '.env'), '--file', (Join-Path $PSScriptRoot 'compose.yaml'))
-docker @composeArguments config --quiet
-if ($dab -and $dab.State.Running) { docker @composeArguments stop mcp }
-docker @composeArguments up -d --wait sql
-Invoke-Sql "IF DB_ID(N'McpDbaDemo') IS NULL CREATE DATABASE McpDbaDemo;" -Database master | Out-Null
-docker exec $sqlName /bin/bash -c 'export SQLCMDPASSWORD="$MSSQL_SA_PASSWORD"; exec /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -d McpDbaDemo -b -i /demo/database.sql'
-docker @composeArguments up -d --wait mcp
-
+$composeArguments = @('compose', '--project-directory', $PSScriptRoot, '--file', (Join-Path $PSScriptRoot 'compose.yaml'))
+$previousSaPassword = $env:MSSQL_SA_PASSWORD
+$previousConnectionString = $env:SQL_CONN_STRING
+$saPassword = $null
+$connection = $null
 $httpClients = [Collections.Generic.List[System.Net.Http.HttpClient]]::new()
 try {
+    $saPassword = Read-Host 'SQL sa password (use the existing password when reusing demo data)' -AsSecureString
+    Assert ($saPassword.Length -gt 0) 'The SQL sa password must not be empty.'
+    $env:MSSQL_SA_PASSWORD = [PSCredential]::new('sa', $saPassword).GetNetworkCredential().Password
+    $connection = [System.Data.Common.DbConnectionStringBuilder]::new()
+    $connection.set_ConnectionString('Server=sql;Database=McpDbaDemo;User Id=sa;Encrypt=True;TrustServerCertificate=True;Application Name=McpDbaDemo;Command Timeout=150')
+    $connection['Password'] = $env:MSSQL_SA_PASSWORD
+    $env:SQL_CONN_STRING = $connection.ConnectionString
+
+    docker @composeArguments config --quiet
+    if ($dab -and $dab.State.Running) { docker @composeArguments stop mcp }
+    docker @composeArguments up -d --wait sql
+    Invoke-Sql "IF DB_ID(N'McpDbaDemo') IS NULL CREATE DATABASE McpDbaDemo;" -Database master | Out-Null
+    docker exec $sqlName /bin/bash -c 'export SQLCMDPASSWORD="$MSSQL_SA_PASSWORD"; exec /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -d McpDbaDemo -b -i /demo/database.sql'
+    docker @composeArguments up -d --wait mcp
+
     $healthClient = [Net.Http.HttpClient]::new()
     $httpClients.Add($healthClient)
     $healthClient.Timeout = [TimeSpan]::FromSeconds(3)
@@ -191,4 +203,8 @@ try {
 }
 finally {
     foreach ($client in $httpClients) { $client.Dispose() }
+    if ($saPassword) { $saPassword.Dispose() }
+    if ($connection) { $connection.Clear() }
+    [Environment]::SetEnvironmentVariable('MSSQL_SA_PASSWORD', $previousSaPassword, 'Process')
+    [Environment]::SetEnvironmentVariable('SQL_CONN_STRING', $previousConnectionString, 'Process')
 }
